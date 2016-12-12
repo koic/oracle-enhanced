@@ -120,9 +120,9 @@ module ActiveRecord
         def insert_versions_sql(versions) # :nodoc:
           sm_table = ActiveRecord::Migrator.schema_migrations_table_name
 
-          versions.map { |version|
-            "INSERT INTO #{sm_table} (version) VALUES ('#{version}')"
-          }.join "\n\n/\n\n"
+          versions.inject("INSERT ALL\n") { |sql, version|
+            sql << "INTO #{quote_table_name(sm_table)} (version) VALUES (#{quote(version)})\n"
+          } << "SELECT * FROM DUAL\n"
         end
 
         def initialize_schema_migrations_table

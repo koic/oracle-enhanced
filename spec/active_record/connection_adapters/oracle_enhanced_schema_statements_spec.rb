@@ -1429,4 +1429,31 @@ end
     end
 
   end
+
+  describe "load schema" do
+    let(:versions) {
+      %w(20160101000000 20160102000000 20160103000000)
+    }
+    let(:insert_versions_sql) {
+      @conn.insert_versions_sql(versions)
+    }
+
+    before do
+      @conn = ActiveRecord::Base.connection
+
+      ActiveRecord::SchemaMigration.create_table
+    end
+
+    it "should loads the migration schema table from insert versions sql" do
+      expect {
+        @conn.execute insert_versions_sql
+      }.not_to raise_error
+
+      expect(@conn.select_value("SELECT COUNT(version) FROM schema_migrations")).to eq versions.count
+    end
+
+    after do
+      ActiveRecord::SchemaMigration.drop_table
+    end
+  end
 end
