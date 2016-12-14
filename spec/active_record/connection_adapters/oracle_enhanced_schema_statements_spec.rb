@@ -1432,7 +1432,9 @@ end
 
   describe "load schema" do
     let(:versions) {
-      %w(20160101000000 20160102000000 20160103000000)
+      (1..1000).map { |i|
+        sprintf("2016010100%04d", i)
+      }
     }
     let(:insert_versions_sql) {
       @conn.insert_versions_sql(versions)
@@ -1449,7 +1451,7 @@ end
         @conn.execute insert_versions_sql
       }.not_to raise_error
 
-      expect(@conn.select_value("SELECT COUNT(version) FROM schema_migrations")).to eq versions.count
+      expect(@conn.select_value("SELECT COUNT(version) FROM schema_migrations")).to eq 1000
     end
 
     after do
