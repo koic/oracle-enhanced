@@ -35,7 +35,7 @@ module ActiveRecord
           else
             default_owner = current_schema
           end
-          real_name = OracleEnhanced::Quoting.valid_table_name?(table_name) ?
+          real_name = OracleEnhanced::Quoting.valid_table_name?(table_name, supports_longer_identifier?) ?
             table_name.upcase : table_name
           if real_name.include?(".")
             table_owner, table_name = real_name.split(".")
@@ -52,7 +52,7 @@ module ActiveRecord
         end
 
         def data_source_exists?(table_name)
-          (_owner, _table_name) = @connection.describe(table_name)
+          (_owner, _table_name) = @connection.describe(table_name, supports_longer_identifier?)
           true
         rescue
           false
@@ -84,7 +84,7 @@ module ActiveRecord
         end
 
         def indexes(table_name) #:nodoc:
-          (_owner, table_name) = @connection.describe(table_name)
+          (_owner, table_name) = @connection.describe(table_name, supports_longer_identifier?)
           default_tablespace_name = default_tablespace
 
           result = select_all(<<~SQL.squish, "indexes", [bind_string("table_name", table_name)])
@@ -248,8 +248,8 @@ module ActiveRecord
         end
 
         def rename_table(table_name, new_name) #:nodoc:
-          if new_name.to_s.length > DatabaseLimits::IDENTIFIER_MAX_LENGTH
-            raise ArgumentError, "New table name '#{new_name}' is too long; the limit is #{DatabaseLimits::IDENTIFIER_MAX_LENGTH} characters"
+          if new_name.to_s.length > max_identifier_length
+            raise ArgumentError, "New table name '#{new_name}' is too long; the limit is #{max_identifier_length} characters"
           end
           execute "RENAME #{quote_table_name(table_name)} TO #{quote_table_name(new_name)}"
           execute "RENAME #{quote_table_name("#{table_name}_seq")} TO #{default_sequence_name(new_name)}" rescue nil
@@ -360,7 +360,7 @@ module ActiveRecord
         #
         # Will always query database and not index cache.
         def index_name_exists?(table_name, index_name)
-          (_owner, table_name) = @connection.describe(table_name)
+          (_owner, table_name) = @connection.describe(table_name, supports_longer_identifier?)
           result = select_value(<<~SQL.squish, "index name exists")
             SELECT 1 FROM all_indexes i
             WHERE i.owner = SYS_CONTEXT('userenv', 'current_schema')
@@ -494,7 +494,7 @@ module ActiveRecord
         end
 
         def table_comment(table_name) #:nodoc:
-          (_owner, table_name) = @connection.describe(table_name)
+          (_owner, table_name) = @connection.describe(table_name, supports_longer_identifier?)
           select_value(<<~SQL.squish, "Table comment", [bind_string("table_name", table_name)])
             SELECT comments FROM all_tab_comments
             WHERE owner = SYS_CONTEXT('userenv', 'current_schema')
@@ -510,7 +510,7 @@ module ActiveRecord
 
         def column_comment(table_name, column_name) #:nodoc:
           # TODO: it  does not exist in Abstract adapter
-          (_owner, table_name) = @connection.describe(table_name)
+          (_owner, table_name) = @connection.describe(table_name, supports_longer_identifier?)
           select_value(<<~SQL.squish, "Column comment", [bind_string("table_name", table_name), bind_string("column_name", column_name.upcase)])
             SELECT comments FROM all_col_comments
             WHERE owner = SYS_CONTEXT('userenv', 'current_schema')
@@ -538,7 +538,7 @@ module ActiveRecord
 
         # get table foreign keys for schema dump
         def foreign_keys(table_name) #:nodoc:
-          (_owner, desc_table_name) = @connection.describe(table_name)
+          (_owner, desc_table_name) = @connection.describe(table_name, supports_longer_identifier?)
 
           fk_info = select_all(<<~SQL.squish, "Foreign Keys", [bind_string("desc_table_name", desc_table_name)])
             SELECT r.table_name to_table
