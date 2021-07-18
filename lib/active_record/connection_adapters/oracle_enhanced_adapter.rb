@@ -690,35 +690,37 @@ module ActiveRecord
         end
       end
 
-      private
-        def initialize_type_map(m = type_map)
-          super
-          # oracle
-          register_class_with_precision m, %r(WITH TIME ZONE)i,       Type::OracleEnhanced::TimestampTz
-          register_class_with_precision m, %r(WITH LOCAL TIME ZONE)i, Type::OracleEnhanced::TimestampLtz
-          register_class_with_limit m, %r(raw)i,            Type::OracleEnhanced::Raw
-          register_class_with_limit m, %r{^(char)}i,        Type::OracleEnhanced::CharacterString
-          register_class_with_limit m, %r{^(nchar)}i,       Type::OracleEnhanced::String
-          register_class_with_limit m, %r(varchar)i,        Type::OracleEnhanced::String
-          register_class_with_limit m, %r(clob)i,           Type::OracleEnhanced::Text
-          register_class_with_limit m, %r(nclob)i,           Type::OracleEnhanced::NationalCharacterText
+      class << self
+        private
+          def initialize_type_map(m)
+            super
+            # oracle
+            register_class_with_precision m, %r(WITH TIME ZONE)i,       Type::OracleEnhanced::TimestampTz
+            register_class_with_precision m, %r(WITH LOCAL TIME ZONE)i, Type::OracleEnhanced::TimestampLtz
+            register_class_with_limit m, %r(raw)i,            Type::OracleEnhanced::Raw
+            register_class_with_limit m, %r{^(char)}i,        Type::OracleEnhanced::CharacterString
+            register_class_with_limit m, %r{^(nchar)}i,       Type::OracleEnhanced::String
+            register_class_with_limit m, %r(varchar)i,        Type::OracleEnhanced::String
+            register_class_with_limit m, %r(clob)i,           Type::OracleEnhanced::Text
+            register_class_with_limit m, %r(nclob)i,           Type::OracleEnhanced::NationalCharacterText
 
-          m.register_type "NCHAR", Type::OracleEnhanced::NationalCharacterString.new
-          m.alias_type %r(NVARCHAR2)i,    "NCHAR"
+            m.register_type "NCHAR", Type::OracleEnhanced::NationalCharacterString.new
+            m.alias_type %r(NVARCHAR2)i,    "NCHAR"
 
-          m.register_type(%r(NUMBER)i) do |sql_type|
-            scale = extract_scale(sql_type)
-            precision = extract_precision(sql_type)
-            limit = extract_limit(sql_type)
-            if scale == 0
-              Type::OracleEnhanced::Integer.new(precision: precision, limit: limit)
-            else
-              Type::Decimal.new(precision: precision, scale: scale)
+            m.register_type(%r(NUMBER)i) do |sql_type|
+              scale = extract_scale(sql_type)
+              precision = extract_precision(sql_type)
+              limit = extract_limit(sql_type)
+              if scale == 0
+                Type::OracleEnhanced::Integer.new(precision: precision, limit: limit)
+              else
+                Type::Decimal.new(precision: precision, scale: scale)
+              end
             end
-          end
 
-          if OracleEnhancedAdapter.emulate_booleans
-            m.register_type %r(^NUMBER\(1\))i, Type::Boolean.new
+            if OracleEnhancedAdapter.emulate_booleans
+              m.register_type %r(^NUMBER\(1\))i, Type::Boolean.new
+            end
           end
         end
 
